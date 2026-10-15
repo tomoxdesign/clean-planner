@@ -1,0 +1,1303 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101317" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Plánovač úklidu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block" rel="stylesheet">
+<script>
+  // nastaví motiv ještě před vykreslením, aby stránka neproblikla
+  try { const t = localStorage.getItem("uklid-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #f0f2f5;
+    --text: #1b1f24;
+    --muted: #677080;
+    --line: #e4e7ec;
+    --accent: #2f6fde;
+    --accent-soft: #e6eefc;
+    --on-accent: #ffffff;
+    --ok: #1f9d55;
+    --ok-soft: #e3f4ea;
+    --late: #d93636;
+    --late-soft: #fbe9e9;
+    --soon: #c77700;
+    --soon-soft: #fcf1df;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+    --toast: #1b1f24;
+    --on-toast: #ffffff;
+    --radius: 16px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101317; --surface: #191d23; --surface-2: #232830; --text: #e7e9ee; --muted: #98a0ae;
+      --line: #2b313b; --accent: #7aa7ff; --accent-soft: #1f2c46; --on-accent: #0d1522;
+      --ok: #4cc77f; --ok-soft: #16301f; --late: #ff7b7b; --late-soft: #3a1c1c; --soon: #f3b44a; --soon-soft: #3a2c12;
+      --shadow: none; --toast: #e7e9ee; --on-toast: #12151a; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101317; --surface: #191d23; --surface-2: #232830; --text: #e7e9ee; --muted: #98a0ae;
+    --line: #2b313b; --accent: #7aa7ff; --accent-soft: #1f2c46; --on-accent: #0d1522;
+    --ok: #4cc77f; --ok-soft: #16301f; --late: #ff7b7b; --late-soft: #3a1c1c; --soon: #f3b44a; --soon-soft: #3a2c12;
+    --shadow: none; --toast: #e7e9ee; --on-toast: #12151a; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased; transition: background .2s, color .2s;
+  }
+  .ms {
+    font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal;
+    font-size: 20px; line-height: 1; display: inline-block; white-space: nowrap;
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+    font-feature-settings: "liga"; user-select: none; flex-shrink: 0;
+  }
+  .ms.fill { font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24; }
+  button { font: inherit; color: inherit; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner { max-width: 1320px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; margin-right: auto; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); }
+  .tabs { display: flex; gap: 2px; background: var(--surface-2); padding: 4px; border-radius: 12px; }
+  .tab { display: flex; align-items: center; gap: 6px; border: 0; background: transparent; padding: 7px 12px; border-radius: 9px; color: var(--muted); cursor: pointer; font-weight: 500; }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  .tab.active .ms { color: var(--accent); font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24; }
+  .bottomnav { display: none; }
+  #syncBtn.ok { color: var(--ok); }
+  #syncBtn.error { color: var(--late); }
+  #syncBtn.busy .ms { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(-360deg); } }
+  .sync-state { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); margin: 12px 0; font-size: 13px; }
+  .sync-state.ok .ms { color: var(--ok); }
+  .sync-state.error .ms { color: var(--late); }
+  .steps { margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-size: 12.5px; display: grid; gap: 4px; }
+  .steps code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; color: var(--text); }
+  main { max-width: 1320px; margin: 0 auto; padding: 18px 16px 40px; }
+
+  /* ---------- generic ---------- */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+    border: 1px solid var(--line); background: var(--surface); color: var(--text);
+    border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 500; white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .btn.primary:hover { filter: brightness(1.06); }
+  .btn.danger { color: var(--late); }
+  .btn.ghost { border-color: transparent; background: transparent; }
+  .icon-btn { width: 36px; height: 36px; display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; flex-shrink: 0; }
+  .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+  .icon-btn.sm { width: 30px; height: 30px; }
+  .icon-btn.sm .ms { font-size: 18px; }
+  input, select { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid transparent; border-radius: 10px; padding: 8px 10px; min-width: 0; outline: none; }
+  input:focus, select:focus { border-color: var(--accent); background: var(--surface); }
+  label.field { display: grid; gap: 5px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  label.field select, label.field input { font-size: 14px; font-weight: 400; color: var(--text); }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .badge .ms { font-size: 13px; }
+  .badge.late { background: var(--late-soft); color: var(--late); }
+  .badge.soon { background: var(--soon-soft); color: var(--soon); }
+  .badge.ok { background: var(--ok-soft); color: var(--ok); }
+  .badge.rep { background: var(--surface-2); color: var(--muted); }
+  .person { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 2px 9px 2px 3px; border-radius: 99px; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--text); white-space: nowrap; }
+  .avatar { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--c); color: #fff; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+  .check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); background: transparent; display: inline-grid; place-items: center; cursor: pointer; color: transparent; padding: 0; flex-shrink: 0; }
+  .check .ms { font-size: 18px; }
+  .check:hover { border-color: var(--ok); color: var(--ok); }
+  .check.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .check.ghostc { border-style: dashed; cursor: default; }
+  .check.ghostc:hover { border-color: var(--line); color: transparent; }
+  .empty { padding: 36px 16px; text-align: center; color: var(--muted); }
+  .empty .ms { font-size: 40px; display: block; margin: 0 auto 8px; opacity: .6; }
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 20px 4px 8px; display: flex; align-items: center; gap: 6px; }
+  .section-title .ms { font-size: 16px; }
+  .seg { display: inline-flex; background: var(--surface-2); padding: 3px; border-radius: 10px; gap: 2px; }
+  .seg button { border: 0; background: transparent; padding: 5px 10px; border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
+  .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  .seg button .ms { font-size: 18px; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 1px; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 4px 12px; cursor: pointer; font-weight: 500; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+  .chip:hover { background: var(--surface-2); }
+  .chip.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+  .chip .avatar { width: 18px; height: 18px; font-size: 9px; margin-left: -7px; }
+  .chip .count { font-size: 11px; color: var(--muted); }
+
+  /* ---------- calendar ---------- */
+  .cal-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+  .cal-head { display: flex; align-items: center; gap: 8px; padding: 14px 14px 8px; flex-wrap: wrap; }
+  .cal-head h2 { margin: 0 auto 0 4px; font-size: 20px; font-weight: 700; }
+  .cal-head h2::first-letter { text-transform: uppercase; }
+  .cal-filter { padding: 0 14px 12px; }
+  .weekdays, .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .weekdays div { padding: 6px 10px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .days { border-top: 1px solid var(--line); touch-action: pan-y; }
+  .day {
+    min-height: 118px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; min-width: 0; outline: none;
+  }
+  .day:nth-child(7n) { border-right: 0; }
+  .days .day:nth-last-child(-n+7) { border-bottom: 0; }
+  .day:hover { background: var(--surface-2); }
+  .day:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+  .day.other .num { color: var(--muted); opacity: .55; }
+  .day.weekend { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+  .day.sel { background: var(--accent-soft); }
+  .day.drop { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+  .dayhead { display: flex; align-items: center; gap: 6px; }
+  .dayhead .wd { display: none; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: capitalize; }
+  .num { font-size: 13px; font-weight: 600; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; }
+  .day.today .num { background: var(--accent); color: var(--on-accent); }
+  .ev {
+    display: flex; align-items: center; gap: 4px; font-size: 11.5px; line-height: 1.25; padding: 3px 6px; border-radius: 6px;
+    background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--text);
+    border-left: 3px solid var(--c); overflow: hidden; white-space: nowrap; min-width: 0;
+  }
+  .ev[draggable="true"] { cursor: grab; }
+  .ev.dragging { opacity: .4; }
+  .ev .t { overflow: hidden; text-overflow: ellipsis; }
+  .ev .ms { font-size: 14px; color: var(--c); }
+  .ev.history { opacity: .55; }
+  .ev.history .t { text-decoration: line-through; }
+  .ev.ghost { background: transparent; border: 1px dashed color-mix(in srgb, var(--c) 60%, transparent); border-left-width: 3px; border-left-style: solid; opacity: .8; }
+  .ev.late { background: var(--late-soft); border-left-color: var(--late); }
+  .more { font-size: 11px; color: var(--muted); padding: 0 6px; font-weight: 500; }
+  .dots { display: none; gap: 3px; flex-wrap: wrap; justify-content: center; padding: 0 2px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+  .dot.history { opacity: .35; }
+  .dot.ghost { background: transparent; box-shadow: inset 0 0 0 1.5px var(--c); }
+  .dot.late { background: var(--late); }
+
+  /* week mode */
+  .days.week .day { min-height: 340px; }
+  .days.week .ev { white-space: normal; align-items: flex-start; padding: 5px 7px; }
+  .days.week .ev .t { display: grid; gap: 1px; }
+  .days.week .ev .t b { font-weight: 600; }
+  .days.week .ev .t small { color: var(--muted); font-size: 11px; }
+
+  .panel { position: sticky; top: 76px; }
+  .panel-head { padding: 16px 16px 8px; display: flex; align-items: flex-start; gap: 8px; }
+  .panel-head h3 { margin: 0; font-size: 17px; font-weight: 700; }
+  .panel-head h3::first-letter { text-transform: uppercase; }
+  .panel-body { padding: 4px 8px 12px; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: 12px; }
+  .item:hover { background: var(--surface-2); }
+  .item .room-ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: var(--surface-2); color: var(--muted); }
+  .item .meta { min-width: 0; flex: 1; display: grid; gap: 3px; }
+  .item .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item.history .title { text-decoration: line-through; color: var(--muted); }
+  .item.ghost { opacity: .75; }
+  .item .sub { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .panel-foot { padding: 0 16px 16px; }
+  .panel-foot .btn { width: 100%; }
+  .hint { padding: 10px 14px 14px; border-top: 1px solid var(--line); display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .hint span { display: inline-flex; align-items: center; gap: 5px; }
+  .hint i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ---------- rooms ---------- */
+  .rooms-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  .room-head { display: flex; align-items: center; gap: 12px; padding: 14px 14px 10px; }
+  .room-head .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+  .room-head .ic .ms { font-size: 24px; }
+  .room-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
+  .trow { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
+  .trow .tname { display: flex; align-items: center; gap: 8px; font-weight: 500; min-width: 0; flex-wrap: wrap; }
+  .trow .tname .ms { color: var(--muted); font-size: 18px; }
+  .trow .acts { display: flex; }
+  .trow .last { grid-column: 2 / 4; font-size: 12px; color: var(--muted); margin-top: -4px; }
+  .trow .fields { grid-column: 2 / 4; display: flex; gap: 6px; }
+  .trow .fields input { flex: 1 1 52%; }
+  .trow .fields select { flex: 1 1 48%; }
+  .add-row { display: flex; gap: 6px; padding: 10px 14px 14px; border-top: 1px solid var(--line); }
+  .add-row input { flex: 1; }
+
+  /* ---------- list / stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .stat { padding: 14px 16px; display: flex; gap: 12px; align-items: center; }
+  .stat .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; }
+  .stat b { font-size: 22px; display: block; line-height: 1.1; }
+  .stat .lbl { font-size: 12px; color: var(--muted); }
+  .board { padding: 14px 16px; margin-bottom: 6px; }
+  .board h4 { margin: 0 0 10px; font-size: 13px; display: flex; gap: 6px; align-items: center; }
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 30px; gap: 10px; align-items: center; padding: 4px 0; }
+  .bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 99px; background: var(--c); }
+  .list-card { padding: 4px 6px; }
+
+  /* ---------- settings ---------- */
+  .settings { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
+  .settings .card { padding: 16px; }
+  .settings h3 { margin: 0 0 4px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .settings h3 .ms { color: var(--accent); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row input { flex: 1; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 99px; background: var(--surface-2); font-weight: 500; }
+  .tag .avatar { margin-left: -6px; }
+
+  /* ---------- dialog ---------- */
+  dialog { border: 0; padding: 0; border-radius: 20px; background: var(--surface); color: var(--text); width: min(460px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  dialog::backdrop { background: rgba(10,14,20,.5); }
+  .dlg-head { display: flex; align-items: center; gap: 8px; padding: 18px 18px 4px; }
+  .dlg-head h3 { margin: 0; font-size: 18px; margin-right: auto; }
+  .dlg-body { display: grid; gap: 12px; padding: 12px 18px; }
+  .dlg-foot { display: flex; gap: 8px; padding: 8px 18px 18px; }
+  .dlg-foot .sp { flex: 1; }
+
+  /* ---------- toast ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+    background: var(--toast); color: var(--on-toast); border-radius: 12px; padding: 10px 10px 10px 16px;
+    display: flex; align-items: center; gap: 12px; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    transition: .2s; max-width: calc(100vw - 32px);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .toast button { border: 0; background: transparent; color: var(--accent); font-weight: 700; cursor: pointer; padding: 6px 10px; border-radius: 8px; }
+  :root:not([data-theme="dark"]) .toast button { color: #8fb4ff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .toast button { color: #2f6fde; } }
+  :root[data-theme="dark"] .toast button { color: #2f6fde; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1080px) {
+    .cal-layout { grid-template-columns: 1fr; }
+    .panel { position: static; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 760px) {
+    .tabs { display: none; }
+    .bottomnav {
+      display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+      background: var(--surface); border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    }
+    .bottomnav button { border: 0; background: transparent; display: grid; justify-items: center; gap: 2px; padding: 4px 0; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; }
+    .bottomnav button .pill { width: 56px; height: 30px; border-radius: 99px; display: grid; place-items: center; }
+    .bottomnav button.active { color: var(--text); }
+    .bottomnav button.active .pill { background: var(--accent-soft); color: var(--accent); }
+    .bottomnav button.active .ms { font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24; }
+    main { padding: 12px 12px 96px; }
+    .rooms-grid { grid-template-columns: 1fr; }
+    .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
+
+    .cal-head { padding: 12px 10px 8px; gap: 4px; }
+    .cal-head h2 { font-size: 18px; flex-basis: 100%; margin: 0 0 4px 4px; }
+    .cal-head .lbl { display: none; }
+    .cal-head .seg { margin-right: auto; }
+    .cal-filter { padding: 0 10px 10px; }
+    .days.month .day { min-height: 54px; padding: 4px 2px; align-items: center; gap: 4px; }
+    .days.month .ev, .days.month .more { display: none; }
+    .days.month .dots { display: flex; }
+    .weekdays div { text-align: center; padding: 6px 0; }
+
+    .weekdays.week { display: none; }
+    .days.week { grid-template-columns: 1fr; }
+    .days.week .day { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; }
+    .days.week .day:last-child { border-bottom: 0; }
+    .days.week .dayhead .wd { display: inline; }
+    .days.week .ev { font-size: 13px; }
+    .hint { display: none; }
+
+    .bar-row { grid-template-columns: 100px 1fr 26px; }
+    .stat { padding: 12px; gap: 10px; }
+    .stat .ic { width: 34px; height: 34px; }
+    .stat b { font-size: 19px; }
+    dialog { margin: auto auto 0; width: 100vw; max-width: 100vw; border-radius: 22px 22px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  }
+  @media (max-width: 420px) {
+    .brand { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="logo"><span class="ms fill">cleaning_services</span></span>Plánovač úklidu</div>
+    <nav class="tabs" id="tabs"></nav>
+    <button class="icon-btn" id="syncBtn" aria-label="Synchronizace"><span class="ms">cloud_off</span></button>
+    <button class="icon-btn" id="themeBtn" aria-label="Přepnout motiv"><span class="ms"></span></button>
+  </div>
+</header>
+<main id="app"></main>
+<nav class="bottomnav" id="bottomnav"></nav>
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastUndo">Zpět</button></div>
+
+<dialog id="planDlg">
+  <form method="dialog" id="planForm">
+    <div class="dlg-head">
+      <span class="ms" style="color:var(--accent)">event_available</span>
+      <h3 id="dlgTitle">Naplánovat úkol</h3>
+      <button class="icon-btn" value="cancel" type="submit" formnovalidate aria-label="Zavřít"><span class="ms">close</span></button>
+    </div>
+    <div class="dlg-body">
+      <label class="field">Místnost<select id="dlgRoom"></select></label>
+      <label class="field">Úkol<select id="dlgTask"></select></label>
+      <div class="row" style="flex-wrap:nowrap">
+        <label class="field" style="flex:1">Datum<input type="date" id="dlgDate" required></label>
+        <label class="field" style="flex:1">Kdo<select id="dlgUser"></select></label>
+      </div>
+      <label class="field">Opakovat<select id="dlgRepeat"></select></label>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn ghost danger" value="clear" type="submit" formnovalidate id="dlgClear"><span class="ms">event_busy</span>Zrušit termín</button>
+      <span class="sp"></span>
+      <button class="btn" value="cancel" type="submit" formnovalidate>Zavřít</button>
+      <button class="btn primary" value="ok" type="submit"><span class="ms">check</span>Uložit</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+// Sem můžeš vložit adresu Apps Script webové aplikace – pak se k ní připojí každý automaticky.
+// Jinak ji lze zadat v Nastavení → Sdílení dat.
+const DEFAULT_SYNC_URL = "";
+
+const STORAGE_KEY = "uklid-planovac-v1";
+const PREFS_KEY = "uklid-prefs";
+const THEME_KEY = "uklid-theme";
+const SYNC_KEY = "uklid-sync";
+
+const STD = [["Prach", 7], ["Zamést", 7], ["Vytřít", 14], ["Věci, co sem nepatří", 7]];
+const DEFAULT_ROOMS = [
+  ["Herna", STD], ["Kuchyně", STD], ["Síň", STD], ["Chodba", STD],
+  ["Záchod 1", STD], ["Záchod 2", STD], ["Koupelna 1", STD], ["Koupelna 2", STD],
+  ["Obývák", STD], ["Ložnice", STD], ["Pracovna", STD], ["Krypl místnost", STD],
+  ["Horní patro – Pokoj 1", STD], ["Horní patro – Pokoj 2", STD],
+  ["Horní patro – Balkon", [["Zamést", 14], ["Vytřít", 30], ["Věci, co sem nepatří", 14]]],
+  ["Zahrada", [["Posekat trávu", 14], ["Vytrhat plevel", 14], ["Zamést terasu", 14], ["Věci, co sem nepatří", 14]]],
+  ["Garáž", [["Prach", 30], ["Zamést", 30], ["Věci, co sem nepatří", 30]]],
+  ["Sklepy", [["Prach", 30], ["Zamést", 30], ["Vytřít", 30], ["Věci, co sem nepatří", 30]]],
+];
+const REPEATS = [[0, "Neopakovat"], [1, "Každý den"], [3, "Každé 3 dny"], [7, "Každý týden"], [14, "Každé 2 týdny"], [30, "Každý měsíc"], [90, "Každé 3 měsíce"]];
+const USER_COLORS = ["#2f6fde", "#e0663a", "#1f9d77", "#a24bd6", "#d6408a", "#c99a06", "#0e9bb8", "#6b7a8f"];
+
+const ROOM_ICONS = [
+  [/herna/i, "toys"], [/kuchy/i, "kitchen"], [/síň/i, "meeting_room"], [/chodba/i, "door_front"],
+  [/záchod|wc/i, "wc"], [/koupel/i, "bathtub"], [/obýv/i, "weekend"], [/ložnic/i, "bed"],
+  [/pracovn/i, "desk"], [/krypl|sklad/i, "shelves"], [/balkon/i, "balcony"], [/pokoj/i, "bedroom_child"],
+  [/zahrad/i, "yard"], [/garáž/i, "garage"], [/sklep/i, "foundation"],
+];
+const TASK_ICONS = [
+  [/prach/i, "cleaning_services"], [/zamést/i, "mop"], [/vytřít/i, "water_drop"], [/nepatří|věci/i, "inventory_2"],
+  [/trávu|sekat/i, "grass"], [/plevel/i, "potted_plant"], [/teras/i, "deck"], [/okn/i, "window"], [/prádl/i, "local_laundry_service"],
+];
+const iconFor = (list, name, fallback) => (list.find(([re]) => re.test(name)) || [, fallback])[1];
+const roomIcon = name => iconFor(ROOM_ICONS, name, "home");
+const taskIcon = name => iconFor(TASK_ICONS, name, "task_alt");
+
+const VIEWS = [["calendar", "Kalendář", "calendar_month"], ["rooms", "Místnosti", "home"], ["list", "Přehled", "insights"], ["settings", "Nastavení", "settings"]];
+const THEMES = { system: ["brightness_auto", "Podle systému"], light: ["light_mode", "Světlý"], dark: ["dark_mode", "Tmavý"] };
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const newTask = (name, repeat = 0) => ({ id: uid(), name, date: "", user: "", repeat, history: [] });
+
+/* ---------- dates ---------- */
+
+function ymd(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function parse(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
+const today = () => ymd(new Date());
+const daysDiff = s => Math.round((parse(s) - parse(today())) / 86400000);
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return ymd(d); };
+function addInterval(s, rep) {
+  if (rep % 30 === 0) {
+    const d = parse(s), day = d.getDate();
+    d.setDate(1); d.setMonth(d.getMonth() + rep / 30);
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+    return ymd(d);
+  }
+  return addDays(s, rep);
+}
+const mondayOf = s => { const d = parse(s); return addDays(s, -((d.getDay() + 6) % 7)); };
+const longDate = s => parse(s).toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long" });
+const shortDate = s => parse(s).toLocaleDateString("cs-CZ", { weekday: "short", day: "numeric", month: "numeric" });
+const repeatLabel = r => (REPEATS.find(x => x[0] === r) || [, `každých ${r} dní`])[1];
+const repeatShort = r => r % 30 === 0 ? `${r / 30} měs.` : r % 7 === 0 ? `${r / 7} týd.` : `${r} d`;
+
+/* ---------- state ---------- */
+
+function defaultState() {
+  return { users: ["Já"], rooms: DEFAULT_ROOMS.map(([name, tasks]) => ({ id: uid(), name, tasks: tasks.map(([t, r]) => newTask(t, r)) })) };
+}
+
+// převede starší data (s příznakem done) na nový formát s historií
+function normalize(s) {
+  s.users ||= [];
+  s.rooms ||= [];
+  s.rooms.forEach(r => (r.tasks ||= []).forEach(t => {
+    t.repeat ??= 0;
+    t.history ||= [];
+    t.date ||= "";
+    t.user ||= "";
+    if (t.done) {
+      t.history.push({ id: uid(), date: t.date || today(), user: t.user, prev: t.date });
+      if (!t.repeat) t.date = "";
+    }
+    delete t.done;
+  }));
+  return s;
+}
+
+function load() {
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) return normalize(JSON.parse(raw)); } catch (e) {}
+  return defaultState();
+}
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  schedulePush();
+}
+
+let state = load();
+let prefs = { view: "calendar", mode: "month", user: "", hideDone: false };
+try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREFS_KEY) || "{}")); } catch (e) {}
+const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) {} };
+if (prefs.user && prefs.user !== "__none" && !state.users.includes(prefs.user)) prefs.user = "";
+
+let selected = today();
+let anchor = today();
+
+/* ---------- theme ---------- */
+
+let theme = "system";
+try { theme = localStorage.getItem(THEME_KEY) || "system"; } catch (e) {}
+function applyTheme() {
+  if (theme === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  const btn = document.getElementById("themeBtn");
+  btn.querySelector(".ms").textContent = THEMES[theme][0];
+  btn.title = "Motiv: " + THEMES[theme][1];
+  const dark = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.content = dark ? "#101317" : "#f4f5f7");
+}
+function setTheme(t) {
+  theme = t;
+  try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+  applyTheme();
+  if (prefs.view === "settings") render();
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+
+/* ---------- helpers ---------- */
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function userColor(name) {
+  const i = state.users.indexOf(name);
+  return i < 0 ? "#8a93a3" : USER_COLORS[i % USER_COLORS.length];
+}
+const initials = name => name.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+const person = name => name
+  ? `<span class="person" style="--c:${userColor(name)}"><span class="avatar">${esc(initials(name))}</span>${esc(name)}</span>`
+  : `<span class="muted small">nepřiřazeno</span>`;
+const matchUser = u => !prefs.user || (prefs.user === "__none" ? !u : u === prefs.user);
+
+function status(t) {
+  if (!t.date) return null;
+  const d = daysDiff(t.date);
+  if (d < 0) return { cls: "late", label: `Po termínu ${-d} d` };
+  if (d === 0) return { cls: "soon", label: "Dnes" };
+  if (d === 1) return { cls: "soon", label: "Zítra" };
+  return null;
+}
+const badge = t => { const s = status(t); return s ? `<span class="badge ${s.cls}">${s.label}</span>` : ""; };
+const repBadge = t => t.repeat ? `<span class="badge rep" title="${repeatLabel(t.repeat)}"><span class="ms">repeat</span>${repeatShort(t.repeat)}</span>` : "";
+
+function allTasks() { const out = []; state.rooms.forEach(r => r.tasks.forEach(t => out.push({ r, t }))); return out; }
+function findTask(roomId, taskId) {
+  const room = state.rooms.find(r => r.id === roomId);
+  return { room, task: room?.tasks.find(t => t.id === taskId) };
+}
+const lastDone = t => t.history.reduce((a, h) => !a || h.date > a.date ? h : a, null);
+const userOptions = (sel, label = "Kdo?") => `<option value="">${label}</option>` + state.users.map(u => `<option ${u === sel ? "selected" : ""}>${esc(u)}</option>`).join("");
+
+/* ---------- undo / toast ---------- */
+
+let undoSnap = null, toastTimer;
+function snapshot() { return JSON.stringify(state); }
+function toast(msg, snap) {
+  undoSnap = snap || null;
+  document.getElementById("toastMsg").textContent = msg;
+  document.getElementById("toastUndo").style.display = snap ? "" : "none";
+  const el = document.getElementById("toast");
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 5000);
+}
+document.getElementById("toastUndo").addEventListener("click", () => {
+  if (!undoSnap) return;
+  state = JSON.parse(undoSnap); undoSnap = null; save(); render();
+  document.getElementById("toast").classList.remove("show");
+});
+
+/* ---------- sync (Google Tabulka přes Apps Script) ---------- */
+
+const sync = { url: "", version: 0, base: null, status: "off", busy: false, timer: null, lastOk: null, error: "" };
+try { Object.assign(sync, JSON.parse(localStorage.getItem(SYNC_KEY) || "{}")); } catch (e) {}
+sync.busy = false; sync.timer = null;
+if (!sync.url && DEFAULT_SYNC_URL) sync.url = DEFAULT_SYNC_URL;
+sync.status = sync.url ? "ok" : "off";
+
+const saveSync = () => {
+  try { localStorage.setItem(SYNC_KEY, JSON.stringify({ url: sync.url, version: sync.version, base: sync.base, lastOk: sync.lastOk })); } catch (e) {}
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function setSyncStatus(s, error = "") {
+  sync.status = s; sync.error = error;
+  if (s === "ok") sync.lastOk = Date.now();
+  saveSync();
+  const btn = document.getElementById("syncBtn");
+  btn.className = "icon-btn " + s;
+  btn.querySelector(".ms").textContent = { off: "cloud_off", ok: "cloud_done", busy: "sync", error: "cloud_alert" }[s];
+  btn.title = { off: "Sdílení vypnuto – nastavíš v Nastavení", ok: "Synchronizováno", busy: "Synchronizuji…", error: "Chyba synchronizace: " + error }[s];
+  if (prefs.view === "settings" && !isEditing()) render();
+}
+
+const isEditing = () => dlg?.open || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName);
+
+async function api(method, body) {
+  const res = await fetch(sync.url, method === "GET"
+    ? { method, cache: "no-store" }
+    // text/plain = „jednoduchý“ požadavek bez CORS preflightu, který Apps Script neumí
+    : { method, body: JSON.stringify(body), headers: { "Content-Type": "text/plain;charset=utf-8" } });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+// 3cestné sloučení: co se změnilo lokálně oproti poslední synchronizaci, vyhrává; zbytek bere ze serveru
+function pick(b, l, r) { return b === undefined || JSON.stringify(l) !== JSON.stringify(b) ? l : r; }
+function mergeList(bArr = [], lArr = [], rArr = [], mergeItem) {
+  const bm = new Map(bArr.map(x => [x.id, x])), lm = new Map(lArr.map(x => [x.id, x])), rm = new Map(rArr.map(x => [x.id, x]));
+  const out = [];
+  rArr.forEach(r => {
+    const b = bm.get(r.id), l = lm.get(r.id);
+    if (b && !l) return;                      // lokálně smazáno
+    out.push(l ? mergeItem(b, l, r) : clone(r));
+  });
+  lArr.forEach(l => { if (!rm.has(l.id) && !bm.has(l.id)) out.push(clone(l)); }); // lokálně přidáno
+  return out;
+}
+function mergeHistory(b = [], l = [], r = []) {
+  const bIds = new Set(b.map(h => h.id)), lIds = new Set(l.map(h => h.id)), rIds = new Set(r.map(h => h.id));
+  const out = r.filter(h => !(bIds.has(h.id) && !lIds.has(h.id)));
+  l.forEach(h => { if (!bIds.has(h.id) && !rIds.has(h.id)) out.push(h); });
+  return clone(out).sort((x, y) => x.date.localeCompare(y.date));
+}
+function mergeTask(b, l, r) {
+  const t = { id: r.id };
+  ["name", "date", "user", "repeat"].forEach(f => t[f] = pick(b?.[f], l[f], r[f]));
+  t.history = mergeHistory(b?.history, l.history, r.history);
+  return t;
+}
+function mergeRoom(b, l, r) {
+  return { id: r.id, name: pick(b?.name, l.name, r.name), tasks: mergeList(b?.tasks, l.tasks, r.tasks, mergeTask) };
+}
+function mergeStates(base, local, remote) {
+  if (!base) return clone(remote);
+  const bU = new Set(base.users), lU = new Set(local.users);
+  const users = remote.users.filter(u => !(bU.has(u) && !lU.has(u)));
+  local.users.forEach(u => { if (!bU.has(u) && !users.includes(u)) users.push(u); });
+  return { users, rooms: mergeList(base.rooms, local.rooms, remote.rooms, mergeRoom) };
+}
+
+function adoptRemote(remote, version) {
+  const norm = normalize(clone(remote));
+  sync.base = JSON.stringify(norm);
+  sync.version = version;
+  return norm;
+}
+
+function schedulePush() {
+  if (!sync.url) return;
+  clearTimeout(sync.timer);
+  sync.timer = setTimeout(push, 700);
+}
+
+async function push() {
+  if (!sync.url) return;
+  if (sync.busy) return schedulePush();
+  const sent = JSON.stringify(state);
+  if (sent === sync.base) return setSyncStatus("ok");
+  sync.busy = true; setSyncStatus("busy");
+  try {
+    const res = await api("POST", { baseVersion: sync.version, state: JSON.parse(sent) });
+    if (res.ok) {
+      sync.base = sent; sync.version = res.version;
+    } else if (res.conflict) {
+      // mezitím uložil někdo jiný – sloučíme a zkusíme znovu
+      const base = sync.base ? JSON.parse(sync.base) : null;
+      const remote = res.state || { users: [], rooms: [] };
+      const merged = mergeStates(base, state, normalize(clone(remote)));
+      adoptRemote(remote, res.version);
+      state = normalize(merged);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+      if (!isEditing()) render();
+    }
+    sync.busy = false;
+    if (JSON.stringify(state) !== sync.base) schedulePush(); else setSyncStatus("ok");
+  } catch (e) {
+    sync.busy = false;
+    setSyncStatus("error", e.message);
+    clearTimeout(sync.timer);
+    sync.timer = setTimeout(push, 15000);
+  }
+}
+
+async function pull({ force = false, first = false } = {}) {
+  if (!sync.url || sync.busy || (!force && isEditing())) return;
+  sync.busy = true; setSyncStatus("busy");
+  try {
+    const res = await api("GET");
+    sync.busy = false;
+    if (!res.state) {
+      // prázdná tabulka – nahrajeme do ní to, co je tady
+      sync.version = res.version || 0; sync.base = null;
+      return push();
+    }
+    const local = JSON.stringify(state);
+    if (res.version !== sync.version || first) {
+      if (first && !sync.base) {
+        const snap = snapshot();
+        state = adoptRemote(res.state, res.version);
+        toast("Načtena sdílená data", snap);
+      } else if (local === sync.base) {
+        state = adoptRemote(res.state, res.version);
+      } else {
+        const base = sync.base ? JSON.parse(sync.base) : null;
+        const merged = mergeStates(base, state, normalize(clone(res.state)));
+        adoptRemote(res.state, res.version);
+        state = normalize(merged);
+      }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+      if (prefs.user && prefs.user !== "__none" && !state.users.includes(prefs.user)) prefs.user = "";
+      if (!isEditing()) render();
+    }
+    if (JSON.stringify(state) !== sync.base) push(); else setSyncStatus("ok");
+  } catch (e) {
+    sync.busy = false;
+    setSyncStatus("error", e.message);
+  }
+}
+
+function connectSync(url) {
+  url = url.trim();
+  if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) { alert("Adresa musí začínat https://script.google.com/…"); return; }
+  sync.url = url; sync.version = 0; sync.base = null;
+  saveSync();
+  pull({ force: true, first: true });
+}
+function disconnectSync() {
+  sync.url = ""; sync.version = 0; sync.base = null;
+  clearTimeout(sync.timer);
+  setSyncStatus("off");
+  render();
+}
+function shareLink() {
+  return location.href.split("#")[0] + "#sync=" + encodeURIComponent(sync.url);
+}
+
+// odkaz s #sync=… nastaví sdílení automaticky
+(function readHash() {
+  const m = location.hash.match(/sync=([^&]+)/);
+  if (!m) return;
+  const url = decodeURIComponent(m[1]);
+  history.replaceState(null, "", location.pathname + location.search);
+  if (url !== sync.url) { sync.url = url; sync.version = 0; sync.base = null; saveSync(); sync.firstFromLink = true; }
+})();
+
+setInterval(() => { if (document.visibilityState === "visible") pull(); }, 20000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pull(); });
+window.addEventListener("online", () => pull());
+
+/* ---------- actions ---------- */
+
+function complete(task) {
+  const snap = snapshot();
+  const t = today();
+  task.history.push({ id: uid(), date: t, user: task.user, prev: task.date });
+  if (task.history.length > 60) task.history.shift();
+  task.date = task.repeat ? addInterval(t, task.repeat) : "";
+  save(); render();
+  toast(task.repeat ? `Hotovo ✓ Další termín ${shortDate(task.date)}` : "Hotovo ✓", snap);
+}
+function uncomplete(task, hid) {
+  const snap = snapshot();
+  const h = task.history.find(x => x.id === hid);
+  if (!h) return;
+  const latest = lastDone(task) === h;
+  task.history = task.history.filter(x => x !== h);
+  if (latest) task.date = h.prev || "";
+  save(); render();
+  toast("Označení „hotovo“ zrušeno", snap);
+}
+
+/* ---------- calendar data ---------- */
+
+function calendarItems(from, to) {
+  const map = {};
+  const push = (date, x) => { if (date >= from && date <= to) (map[date] ||= []).push(x); };
+  allTasks().forEach(({ r, t }) => {
+    t.history.forEach(h => { if (matchUser(h.user)) push(h.date, { kind: "history", r, t, h, user: h.user }); });
+    if (t.date && matchUser(t.user)) {
+      push(t.date, { kind: "planned", r, t, user: t.user });
+      if (t.repeat) {
+        let d = addInterval(t.date, t.repeat), n = 0;
+        while (d <= to && n++ < 400) { push(d, { kind: "ghost", r, t, user: t.user }); d = addInterval(d, t.repeat); }
+      }
+    }
+  });
+  const order = { planned: 0, ghost: 1, history: 2 };
+  Object.values(map).forEach(l => l.sort((a, b) => order[a.kind] - order[b.kind]));
+  return map;
+}
+
+/* ---------- views ---------- */
+
+function itemRow(x, opts = {}) {
+  const { kind, r, t, h } = x;
+  const check = kind === "planned"
+    ? `<button class="check" data-act="complete" aria-label="Označit jako hotové"><span class="ms">check</span></button>`
+    : kind === "history"
+      ? `<button class="check on" data-act="uncomplete" data-hid="${h.id}" aria-label="Zrušit hotovo"><span class="ms">check</span></button>`
+      : `<span class="check ghostc" title="Budoucí opakování"></span>`;
+  const sub = [
+    esc(r.name),
+    opts.date && kind === "planned" && t.date ? shortDate(t.date) : "",
+    opts.date && kind === "history" ? shortDate(h.date) : "",
+  ].filter(Boolean).join(" · ");
+  const extra = kind === "planned" ? badge(t) + repBadge(t)
+    : kind === "history" ? `<span class="badge ok">Hotovo</span>`
+    : `<span class="badge rep"><span class="ms">repeat</span>opakování</span>`;
+  return `<div class="item ${kind}" data-room="${r.id}" data-task="${t.id}">
+    ${check}
+    <div class="room-ic"><span class="ms">${roomIcon(r.name)}</span></div>
+    <div class="meta">
+      <div class="title">${esc(t.name)}</div>
+      <div class="sub">${sub} ${person(kind === "history" ? h.user : t.user)} ${extra}</div>
+    </div>
+    ${kind !== "history" ? `<button class="icon-btn sm" data-act="edit" title="Upravit"><span class="ms">edit_calendar</span></button>` : ""}
+  </div>`;
+}
+
+function filterChips() {
+  const counts = {};
+  allTasks().forEach(({ t }) => { if (t.date) counts[t.user || "__none"] = (counts[t.user || "__none"] || 0) + 1; });
+  return `<div class="chips">
+    <button class="chip ${!prefs.user ? "on" : ""}" data-filter=""><span class="ms" style="font-size:18px">groups</span>Všichni</button>
+    ${state.users.map(u => `<button class="chip ${prefs.user === u ? "on" : ""}" data-filter="${esc(u)}" style="--c:${userColor(u)}"><span class="avatar">${esc(initials(u))}</span>${esc(u)}${counts[u] ? `<span class="count">${counts[u]}</span>` : ""}</button>`).join("")}
+    ${counts.__none ? `<button class="chip ${prefs.user === "__none" ? "on" : ""}" data-filter="__none"><span class="ms" style="font-size:18px">person_off</span>Nepřiřazené<span class="count">${counts.__none}</span></button>` : ""}
+  </div>`;
+}
+
+function renderCalendar() {
+  const week = prefs.mode === "week";
+  let start, cells, title;
+  if (week) {
+    start = mondayOf(anchor); cells = 7;
+    const end = addDays(start, 6), s = parse(start), e = parse(end);
+    title = s.getMonth() === e.getMonth()
+      ? `${s.getDate()}.–${e.getDate()}. ${e.toLocaleDateString("cs-CZ", { month: "long", year: "numeric" })}`
+      : `${s.toLocaleDateString("cs-CZ", { day: "numeric", month: "short" })} – ${e.toLocaleDateString("cs-CZ", { day: "numeric", month: "short", year: "numeric" })}`;
+  } else {
+    const a = parse(anchor), first = ymd(new Date(a.getFullYear(), a.getMonth(), 1));
+    start = mondayOf(first);
+    const dim = new Date(a.getFullYear(), a.getMonth() + 1, 0).getDate();
+    cells = Math.ceil((daysDiff(first) - daysDiff(start) + dim) / 7) * 7;
+    title = a.toLocaleDateString("cs-CZ", { month: "long", year: "numeric" });
+  }
+  const end = addDays(start, cells - 1);
+  const items = calendarItems(start, selected > end || selected < start ? (selected > end ? selected : end) : end);
+  const selItems = calendarItems(selected, selected)[selected] || [];
+  const curMonth = parse(anchor).getMonth();
+  const td = today();
+  const late = allTasks().filter(({ t }) => t.date && daysDiff(t.date) < 0 && matchUser(t.user)).length;
+  const max = week ? 99 : 3;
+
+  let days = "";
+  for (let i = 0; i < cells; i++) {
+    const key = addDays(start, i), d = parse(key);
+    const list = items[key] || [];
+    const cls = ["day", !week && d.getMonth() !== curMonth && "other", key === td && "today", key === selected && "sel", i % 7 > 4 && "weekend"].filter(Boolean).join(" ");
+    const evs = list.slice(0, max).map(x => {
+      const lateCls = x.kind === "planned" && daysDiff(key) < 0 ? "late" : "";
+      const drag = x.kind === "planned" ? `draggable="true" data-drag="${x.r.id}:${x.t.id}"` : "";
+      const label = week ? `<b>${esc(x.t.name)}</b><small>${esc(x.r.name)}${x.user ? " · " + esc(x.user) : ""}</small>` : `${esc(x.r.name)} · ${esc(x.t.name)}`;
+      return `<div class="ev ${x.kind} ${lateCls}" ${drag} style="--c:${userColor(x.user)}" title="${esc(x.r.name)} – ${esc(x.t.name)}${x.user ? " (" + esc(x.user) + ")" : ""}">
+        <span class="ms">${x.kind === "history" ? "check_circle" : roomIcon(x.r.name)}</span><span class="t">${label}</span></div>`;
+    }).join("");
+    const more = list.length > max ? `<div class="more">+${list.length - max} další</div>` : "";
+    const dots = list.length ? `<div class="dots">${list.slice(0, 6).map(x => `<i class="dot ${x.kind} ${x.kind === "planned" && daysDiff(key) < 0 ? "late" : ""}" style="--c:${userColor(x.user)}"></i>`).join("")}</div>` : "";
+    const wd = d.toLocaleDateString("cs-CZ", { weekday: "long" });
+    days += `<div class="${cls}" data-date="${key}" tabindex="0" role="button" aria-label="${longDate(key)}, ${list.length} úkolů">
+      <div class="dayhead"><span class="num">${d.getDate()}</span><span class="wd">${wd}</span></div>${evs}${more}${dots}</div>`;
+  }
+
+  const done = selItems.filter(x => x.kind === "history").length;
+  const real = selItems.filter(x => x.kind !== "ghost").length;
+
+  return `<div class="cal-layout">
+    <section class="card">
+      <div class="cal-head">
+        <h2>${title}</h2>
+        <div class="seg">
+          <button class="${!week ? "on" : ""}" data-mode="month"><span class="ms">calendar_view_month</span><span class="lbl">Měsíc</span></button>
+          <button class="${week ? "on" : ""}" data-mode="week"><span class="ms">view_week</span><span class="lbl">Týden</span></button>
+        </div>
+        ${late ? `<button class="btn danger" data-goto="list" title="Úkoly po termínu"><span class="ms">error</span><span class="lbl">Po termínu:</span> ${late}</button>` : ""}
+        <button class="btn" data-cal="today"><span class="ms">today</span><span class="lbl">Dnes</span></button>
+        <button class="icon-btn" data-cal="prev" aria-label="Předchozí"><span class="ms">chevron_left</span></button>
+        <button class="icon-btn" data-cal="next" aria-label="Další"><span class="ms">chevron_right</span></button>
+      </div>
+      <div class="cal-filter">${filterChips()}</div>
+      <div class="weekdays ${week ? "week" : ""}">${["Po", "Út", "St", "Čt", "Pá", "So", "Ne"].map((n, i) => `<div>${n}${week ? " " + parse(addDays(start, i)).getDate() + "." : ""}</div>`).join("")}</div>
+      <div class="days ${week ? "week" : "month"}" id="days">${days}</div>
+      <div class="hint">
+        <span><i style="background:color-mix(in srgb,var(--accent) 25%,transparent);border-left:3px solid var(--accent)"></i>Naplánováno</span>
+        <span><i style="border:1px dashed var(--muted)"></i>Opakování</span>
+        <span><i style="background:var(--late-soft);border-left:3px solid var(--late)"></i>Po termínu</span>
+        <span><span class="ms" style="font-size:15px">drag_pan</span>Úkol přesuneš přetažením na jiný den</span>
+      </div>
+    </section>
+    <aside class="card panel" id="panel">
+      <div class="panel-head">
+        <div style="flex:1">
+          <h3>${longDate(selected)}</h3>
+          <div class="muted small">${real ? `${done} z ${real} hotovo` : selItems.length ? "Jen plánovaná opakování" : "Nic naplánováno"}</div>
+        </div>
+      </div>
+      <div class="panel-body">
+        ${selItems.length ? selItems.map(x => itemRow(x)).join("") : `<div class="empty"><span class="ms">event_available</span>Volný den</div>`}
+      </div>
+      <div class="panel-foot"><button class="btn primary" data-act="plan"><span class="ms">add</span>Naplánovat úkol</button></div>
+    </aside>
+  </div>`;
+}
+
+function renderRooms() {
+  return `<div class="rooms-grid">` + state.rooms.map(room => {
+    const planned = room.tasks.filter(t => t.date).length;
+    const late = room.tasks.filter(t => t.date && daysDiff(t.date) < 0).length;
+    const last = room.tasks.map(lastDone).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date))[0];
+    return `<section class="card">
+      <div class="room-head">
+        <div class="ic"><span class="ms">${roomIcon(room.name)}</span></div>
+        <div style="flex:1;min-width:0">
+          <h3>${esc(room.name)}</h3>
+          <div class="muted small">${planned} naplánováno${late ? ` · <span style="color:var(--late)">${late} po termínu</span>` : ""}${last ? ` · naposledy ${shortDate(last.date)}` : ""}</div>
+        </div>
+      </div>
+      ${room.tasks.map(t => {
+        const ld = lastDone(t);
+        return `<div class="trow" data-room="${room.id}" data-task="${t.id}">
+          <button class="check" data-act="complete" title="Hotovo teď"><span class="ms">check</span></button>
+          <div class="tname"><span class="ms">${taskIcon(t.name)}</span><span>${esc(t.name)}</span>${repBadge(t)}${badge(t)}</div>
+          <div class="acts">
+            <button class="icon-btn sm" data-act="edit" title="Upravit"><span class="ms">edit_calendar</span></button>
+            <button class="icon-btn sm" data-act="del" title="Smazat úkol"><span class="ms">delete</span></button>
+          </div>
+          ${ld ? `<div class="last">Naposledy ${shortDate(ld.date)}${ld.user ? " · " + esc(ld.user) : ""}</div>` : ""}
+          <div class="fields">
+            <input type="date" data-act="date" value="${t.date}" aria-label="Datum">
+            <select data-act="user" aria-label="Kdo">${userOptions(t.user)}</select>
+          </div>
+        </div>`;
+      }).join("")}
+      <form class="add-row" data-room="${room.id}">
+        <input name="t" placeholder="Přidat úkol…">
+        <button class="icon-btn" aria-label="Přidat"><span class="ms">add</span></button>
+      </form>
+    </section>`;
+  }).join("") + `</div>`;
+}
+
+function renderList() {
+  const tasks = allTasks();
+  const planned = tasks.filter(({ t }) => t.date && matchUser(t.user)).map(x => ({ ...x, kind: "planned" }));
+  planned.sort((a, b) => a.t.date.localeCompare(b.t.date));
+  const history = [];
+  tasks.forEach(({ r, t }) => t.history.forEach(h => history.push({ kind: "history", r, t, h, user: h.user })));
+  const since30 = addDays(today(), -30);
+  const recent = history.filter(x => x.h.date >= since30);
+
+  const nLate = planned.filter(x => daysDiff(x.t.date) < 0).length;
+  const nToday = planned.filter(x => daysDiff(x.t.date) === 0).length;
+  const nWeek = planned.filter(x => { const d = daysDiff(x.t.date); return d >= 0 && d <= 7; }).length;
+  const nDone = recent.filter(x => matchUser(x.user)).length;
+  const stat = (n, label, icon, c, soft) => `<div class="card stat"><div class="ic" style="background:${soft};color:${c}"><span class="ms">${icon}</span></div><div><b>${n}</b><span class="lbl">${label}</span></div></div>`;
+
+  const perUser = state.users.map(u => [u, recent.filter(x => x.user === u).length]);
+  const maxU = Math.max(1, ...perUser.map(x => x[1]));
+  const board = state.users.length ? `<div class="card board">
+      <h4><span class="ms" style="color:var(--accent)">leaderboard</span>Hotové úkoly za posledních 30 dní</h4>
+      ${perUser.sort((a, b) => b[1] - a[1]).map(([u, n]) => `<div class="bar-row" style="--c:${userColor(u)}">${person(u)}<div class="bar"><i style="width:${n / maxU * 100}%"></i></div><b style="text-align:right">${n}</b></div>`).join("")}
+    </div>` : "";
+
+  const groups = [
+    ["Po termínu", "error", x => daysDiff(x.t.date) < 0],
+    ["Dnes", "today", x => daysDiff(x.t.date) === 0],
+    ["Příštích 7 dní", "date_range", x => { const d = daysDiff(x.t.date); return d > 0 && d <= 7; }],
+    ["Později", "event_upcoming", x => daysDiff(x.t.date) > 7],
+  ];
+  const lists = groups.map(([name, icon, fn]) => {
+    const g = planned.filter(fn);
+    return g.length ? `<div class="section-title"><span class="ms">${icon}</span>${name} · ${g.length}</div><div class="card list-card">${g.map(x => itemRow(x, { date: true })).join("")}</div>` : "";
+  }).join("");
+  const doneList = prefs.hideDone ? "" : (() => {
+    const g = recent.filter(x => matchUser(x.user)).sort((a, b) => b.h.date.localeCompare(a.h.date)).slice(0, 30);
+    return g.length ? `<div class="section-title"><span class="ms">task_alt</span>Nedávno hotové · ${g.length}</div><div class="card list-card">${g.map(x => itemRow(x, { date: true })).join("")}</div>` : "";
+  })();
+
+  return `<div class="stats">
+      ${stat(nLate, "Po termínu", "error", "var(--late)", "var(--late-soft)")}
+      ${stat(nToday, "Dnes", "today", "var(--soon)", "var(--soon-soft)")}
+      ${stat(nWeek, "Příštích 7 dní", "date_range", "var(--accent)", "var(--accent-soft)")}
+      ${stat(nDone, "Hotovo za 30 dní", "task_alt", "var(--ok)", "var(--ok-soft)")}
+    </div>
+    ${board}
+    <div class="row" style="margin-top:14px;flex-wrap:nowrap">
+      <div style="flex:1;min-width:0">${filterChips()}</div>
+      <button class="chip ${prefs.hideDone ? "on" : ""}" data-act="hideDone"><span class="ms" style="font-size:18px">${prefs.hideDone ? "visibility_off" : "visibility"}</span>Skrýt hotové</button>
+    </div>
+    ${lists || doneList ? lists + doneList : `<div class="card empty" style="margin-top:14px"><span class="ms">event_note</span>Zatím nic naplánováno.<br>Přidej úkol v Kalendáři nebo v Místnostech.</div>`}`;
+}
+
+function renderSettings() {
+  return `<div class="settings">
+    <section class="card">
+      <h3><span class="ms">palette</span>Vzhled</h3>
+      <div class="muted small" style="margin-bottom:12px">Tmavý režim lze přepnout i ikonou vpravo nahoře.</div>
+      <div class="seg">${Object.entries(THEMES).map(([k, [ic, l]]) => `<button class="${theme === k ? "on" : ""}" data-theme-set="${k}"><span class="ms">${ic}</span>${l}</button>`).join("")}</div>
+    </section>
+    <section class="card">
+      <h3><span class="ms">cloud_sync</span>Sdílení dat</h3>
+      ${sync.url ? `
+        <div class="muted small">Data se ukládají do Google Tabulky, takže všichni vidí to samé. Změny ostatních se načítají každých 20 s.</div>
+        <div class="sync-state ${sync.status}">
+          <span class="ms">${{ ok: "cloud_done", busy: "sync", error: "cloud_alert", off: "cloud_off" }[sync.status]}</span>
+          <span>${sync.status === "error" ? "Chyba: " + esc(sync.error) : sync.status === "busy" ? "Synchronizuji…" : sync.lastOk ? "Synchronizováno " + new Date(sync.lastOk).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }) : "Připojeno"}</span>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="copyLink"><span class="ms">link</span>Zkopírovat odkaz pro ostatní</button>
+          <button class="btn" id="syncNow"><span class="ms">sync</span>Načíst teď</button>
+          <button class="btn danger" id="syncOff"><span class="ms">link_off</span>Odpojit</button>
+        </div>
+        <div class="muted small" style="margin-top:10px">Kdo otevře zkopírovaný odkaz, připojí se automaticky.</div>`
+      : `
+        <div class="muted small">Teď se data ukládají jen v tomto prohlížeči. Po připojení Google Tabulky uvidí všichni stejná data.</div>
+        <form id="syncForm" class="row" style="margin-top:12px"><input name="url" placeholder="https://script.google.com/macros/s/…/exec"><button class="btn primary"><span class="ms">cloud_upload</span>Připojit</button></form>
+        <ol class="steps">
+          <li>Vytvoř novou Google Tabulku → <code>Rozšíření → Apps Script</code>.</li>
+          <li>Vlož kód ze souboru <code>apps-script/Code.gs</code> a ulož.</li>
+          <li><code>Nasadit → Nové nasazení → Webová aplikace</code>, spustit jako <b>Já</b>, přístup <b>Kdokoli</b>.</li>
+          <li>Zkopíruj adresu webové aplikace (končí <code>/exec</code>) a vlož ji sem.</li>
+        </ol>`}
+    </section>
+    <section class="card">
+      <h3><span class="ms">group</span>Uživatelé</h3>
+      <div class="muted small">Každý dostane vlastní barvu v kalendáři.</div>
+      <div class="tags">${state.users.map((u, i) => `<span class="tag" style="--c:${userColor(u)}"><span class="avatar">${esc(initials(u))}</span>${esc(u)}<button class="icon-btn sm" data-deluser="${i}" aria-label="Odebrat"><span class="ms">close</span></button></span>`).join("")}</div>
+      <form id="addUser" class="row"><input name="u" placeholder="Jméno"><button class="btn primary"><span class="ms">person_add</span>Přidat</button></form>
+    </section>
+    <section class="card">
+      <h3><span class="ms">home</span>Místnosti</h3>
+      <div class="muted small">Nová místnost dostane základní úkoly (prach, zamést, vytřít, věci).</div>
+      <div class="tags">${state.rooms.map(r => `<span class="tag"><span class="ms" style="font-size:16px;color:var(--muted)">${roomIcon(r.name)}</span>${esc(r.name)}<button class="icon-btn sm" data-delroom="${r.id}" aria-label="Smazat"><span class="ms">close</span></button></span>`).join("")}</div>
+      <form id="addRoom" class="row"><input name="r" placeholder="Název místnosti"><button class="btn primary"><span class="ms">add</span>Přidat</button></form>
+    </section>
+    <section class="card">
+      <h3><span class="ms">database</span>Data</h3>
+      <div class="muted small" style="margin-bottom:12px">Záloha do souboru JSON a obnova ze zálohy.</div>
+      <div class="row">
+        <button class="btn" id="export"><span class="ms">download</span>Export</button>
+        <label class="btn"><span class="ms">upload</span>Import<input type="file" id="import" accept=".json" hidden></label>
+        <button class="btn" id="clearHistory"><span class="ms">history</span>Smazat historii</button>
+        <button class="btn danger" id="resetAll"><span class="ms">delete_forever</span>Výchozí stav</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+/* ---------- render ---------- */
+
+function renderNav() {
+  document.getElementById("tabs").innerHTML = VIEWS.map(([k, l, i]) =>
+    `<button class="tab ${prefs.view === k ? "active" : ""}" data-view="${k}"><span class="ms">${i}</span>${l}</button>`).join("");
+  document.getElementById("bottomnav").innerHTML = VIEWS.map(([k, l, i]) =>
+    `<button class="${prefs.view === k ? "active" : ""}" data-view="${k}"><span class="pill"><span class="ms">${i}</span></span>${l}</button>`).join("");
+}
+
+function render() {
+  renderNav();
+  const v = prefs.view;
+  document.getElementById("app").innerHTML =
+    v === "calendar" ? renderCalendar() : v === "rooms" ? renderRooms() : v === "list" ? renderList() : renderSettings();
+}
+
+function setView(v) { prefs.view = v; savePrefs(); render(); window.scrollTo(0, 0); }
+
+function shift(dir) {
+  if (prefs.mode === "week") anchor = addDays(anchor, 7 * dir);
+  else { const a = parse(anchor); anchor = ymd(new Date(a.getFullYear(), a.getMonth() + dir, 1)); }
+  render();
+}
+
+function selectDay(key) {
+  selected = key;
+  if (prefs.mode === "month" && parse(key).getMonth() !== parse(anchor).getMonth()) anchor = key;
+  render();
+  if (matchMedia("(max-width: 1080px)").matches) document.getElementById("panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* ---------- plan dialog ---------- */
+
+const $ = id => document.getElementById(id);
+const dlg = $("planDlg");
+$("dlgRepeat").innerHTML = REPEATS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+
+function fillTasks(roomId, taskId) {
+  const room = state.rooms.find(r => r.id === roomId);
+  $("dlgTask").innerHTML = room.tasks.map(t =>
+    `<option value="${t.id}" ${t.id === taskId ? "selected" : ""}>${esc(t.name)}${t.date ? " (" + shortDate(t.date) + ")" : ""}</option>`).join("");
+  syncTaskFields();
+}
+function syncTaskFields(keepDate) {
+  const { task } = findTask($("dlgRoom").value, $("dlgTask").value);
+  if (!task) return;
+  $("dlgUser").innerHTML = userOptions(task.user || (prefs.user !== "__none" ? prefs.user : ""));
+  $("dlgRepeat").value = String(task.repeat || 0);
+  if (!keepDate) $("dlgDate").value = task.date || selected;
+  $("dlgClear").style.visibility = task.date ? "visible" : "hidden";
+}
+function openPlan({ roomId, taskId, date } = {}) {
+  roomId ||= state.rooms[0]?.id;
+  if (!roomId) return;
+  $("dlgTitle").textContent = taskId ? "Upravit úkol" : "Naplánovat úkol";
+  $("dlgRoom").innerHTML = state.rooms.map(r => `<option value="${r.id}" ${r.id === roomId ? "selected" : ""}>${esc(r.name)}</option>`).join("");
+  fillTasks(roomId, taskId);
+  if (date) $("dlgDate").value = date;
+  dlg.showModal();
+}
+$("dlgRoom").addEventListener("change", () => { const d = $("dlgDate").value; fillTasks($("dlgRoom").value); $("dlgDate").value = d; });
+$("dlgTask").addEventListener("change", () => syncTaskFields(true));
+dlg.addEventListener("close", () => {
+  const { task } = findTask($("dlgRoom").value, $("dlgTask").value);
+  if (!task || !["ok", "clear"].includes(dlg.returnValue)) return;
+  const snap = snapshot();
+  if (dlg.returnValue === "clear") {
+    task.date = "";
+    save(); render(); toast("Termín zrušen", snap);
+    return;
+  }
+  if (!$("dlgDate").value) return;
+  task.date = $("dlgDate").value;
+  task.user = $("dlgUser").value;
+  task.repeat = +$("dlgRepeat").value;
+  selected = anchor = task.date;
+  save(); render(); toast(`Naplánováno na ${shortDate(task.date)}`, snap);
+});
+
+/* ---------- events ---------- */
+
+document.addEventListener("click", e => {
+  const v = e.target.closest("[data-view]");
+  if (v) setView(v.dataset.view);
+});
+$("themeBtn").addEventListener("click", () => setTheme({ system: "light", light: "dark", dark: "system" }[theme]));
+
+const app = $("app");
+
+app.addEventListener("click", e => {
+  const el = e.target.closest("button, [data-date]");
+  if (!el) return;
+  const row = el.closest("[data-task]");
+  const ref = row ? findTask(row.dataset.room, row.dataset.task) : {};
+
+  if (el.dataset.goto) return setView(el.dataset.goto);
+  if (el.dataset.mode) { prefs.mode = el.dataset.mode; anchor = selected; savePrefs(); return render(); }
+  if (el.dataset.cal === "today") { selected = anchor = today(); return render(); }
+  if (el.dataset.cal) return shift(el.dataset.cal === "next" ? 1 : -1);
+  if (el.dataset.date) return selectDay(el.dataset.date);
+  if (el.dataset.filter !== undefined) { prefs.user = el.dataset.filter; savePrefs(); return render(); }
+  if (el.dataset.themeSet) return setTheme(el.dataset.themeSet);
+  if (el.dataset.act === "plan") return openPlan({ date: selected });
+  if (el.dataset.act === "edit" && ref.task) return openPlan({ roomId: ref.room.id, taskId: ref.task.id });
+  if (el.dataset.act === "complete" && ref.task) return complete(ref.task);
+  if (el.dataset.act === "uncomplete" && ref.task) return uncomplete(ref.task, el.dataset.hid);
+  if (el.dataset.act === "hideDone") { prefs.hideDone = !prefs.hideDone; savePrefs(); return render(); }
+  if (el.dataset.act === "del" && ref.task) {
+    const snap = snapshot();
+    ref.room.tasks = ref.room.tasks.filter(t => t !== ref.task); save(); render();
+    return toast(`Úkol „${ref.task.name}“ smazán`, snap);
+  }
+  if (el.dataset.deluser !== undefined) {
+    const snap = snapshot(), u = state.users[+el.dataset.deluser];
+    state.users.splice(+el.dataset.deluser, 1);
+    if (prefs.user === u) { prefs.user = ""; savePrefs(); }
+    save(); render(); return toast(`Uživatel ${u} odebrán`, snap);
+  }
+  if (el.dataset.delroom) {
+    const snap = snapshot(), room = state.rooms.find(r => r.id === el.dataset.delroom);
+    state.rooms = state.rooms.filter(r => r !== room); save(); render();
+    return toast(`Místnost „${room.name}“ smazána`, snap);
+  }
+  if (el.id === "export") return exportFile();
+  if (el.id === "syncNow") return pull({ force: true });
+  if (el.id === "syncOff" && confirm("Odpojit sdílení? Data zůstanou v tabulce i v tomto prohlížeči.")) return disconnectSync();
+  if (el.id === "copyLink") {
+    const link = shareLink();
+    navigator.clipboard?.writeText(link).then(() => toast("Odkaz zkopírován"), () => prompt("Zkopíruj odkaz:", link));
+    if (!navigator.clipboard) prompt("Zkopíruj odkaz:", link);
+    return;
+  }
+  if (el.id === "clearHistory" && confirm("Smazat historii všech hotových úkolů?")) {
+    const snap = snapshot();
+    state.rooms.forEach(r => r.tasks.forEach(t => t.history = [])); save(); render();
+    return toast("Historie smazána", snap);
+  }
+  if (el.id === "resetAll" && confirm("Opravdu smazat vše a obnovit výchozí místnosti?")) {
+    const snap = snapshot();
+    state = defaultState(); save(); render(); return toast("Obnoven výchozí stav", snap);
+  }
+});
+
+app.addEventListener("keydown", e => {
+  const day = e.target.closest?.("[data-date]");
+  if (day && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); selectDay(day.dataset.date); }
+});
+
+document.addEventListener("keydown", e => {
+  if (prefs.view !== "calendar" || dlg.open || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+  if (e.key === "ArrowLeft") shift(-1);
+  if (e.key === "ArrowRight") shift(1);
+  if (e.key === "t" || e.key === "T") { selected = anchor = today(); render(); }
+});
+
+app.addEventListener("change", e => {
+  const el = e.target;
+  if (el.id === "import") return importFile(el.files[0]);
+  const row = el.closest("[data-task]");
+  if (!row) return;
+  const { task } = findTask(row.dataset.room, row.dataset.task);
+  if (!task) return;
+  if (el.dataset.act === "date") task.date = el.value;
+  if (el.dataset.act === "user") task.user = el.value;
+  save(); render();
+});
+
+app.addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.id === "syncForm") return connectSync(f.url.value);
+  if (f.classList.contains("add-row")) {
+    const name = f.t.value.trim();
+    if (!name) return;
+    state.rooms.find(r => r.id === f.dataset.room).tasks.push(newTask(name));
+  }
+  if (f.id === "addUser") {
+    const u = f.u.value.trim();
+    if (!u || state.users.includes(u)) return;
+    state.users.push(u);
+  }
+  if (f.id === "addRoom") {
+    const r = f.r.value.trim();
+    if (!r) return;
+    state.rooms.push({ id: uid(), name: r, tasks: STD.map(([t, rep]) => newTask(t, rep)) });
+  }
+  save(); render();
+});
+
+/* drag & drop (počítač) */
+app.addEventListener("dragstart", e => {
+  const ev = e.target.closest?.("[data-drag]");
+  if (!ev) return;
+  e.dataTransfer.setData("text/plain", ev.dataset.drag);
+  e.dataTransfer.effectAllowed = "move";
+  ev.classList.add("dragging");
+});
+app.addEventListener("dragend", e => e.target.classList?.remove("dragging"));
+app.addEventListener("dragover", e => {
+  const day = e.target.closest?.("[data-date]");
+  if (!day) return;
+  e.preventDefault();
+  document.querySelectorAll(".day.drop").forEach(d => d !== day && d.classList.remove("drop"));
+  day.classList.add("drop");
+});
+app.addEventListener("dragleave", e => { const day = e.target.closest?.("[data-date]"); if (day && !day.contains(e.relatedTarget)) day.classList.remove("drop"); });
+app.addEventListener("drop", e => {
+  const day = e.target.closest?.("[data-date]");
+  const data = e.dataTransfer.getData("text/plain");
+  if (!day || !data) return;
+  e.preventDefault();
+  const [roomId, taskId] = data.split(":");
+  const { task } = findTask(roomId, taskId);
+  if (!task || task.date === day.dataset.date) return render();
+  const snap = snapshot();
+  task.date = selected = day.dataset.date;
+  save(); render(); toast(`Přesunuto na ${shortDate(task.date)}`, snap);
+});
+
+/* swipe (mobil) */
+let touchX = null, touchY = null;
+app.addEventListener("touchstart", e => {
+  if (!e.target.closest("#days")) return;
+  touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
+}, { passive: true });
+app.addEventListener("touchend", e => {
+  if (touchX === null) return;
+  const dx = e.changedTouches[0].clientX - touchX, dy = e.changedTouches[0].clientY - touchY;
+  touchX = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) shift(dx < 0 ? 1 : -1);
+});
+
+/* ---------- import / export ---------- */
+
+function exportFile() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `uklid-${today()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importFile(file) {
+  if (!file) return;
+  file.text().then(txt => {
+    try {
+      const data = JSON.parse(txt);
+      if (!Array.isArray(data.rooms) || !Array.isArray(data.users)) throw 0;
+      const snap = snapshot();
+      state = normalize(data); save(); render(); toast("Data importována", snap);
+    } catch { alert("Soubor nemá správný formát."); }
+  });
+}
+
+document.getElementById("syncBtn").addEventListener("click", () => sync.url ? pull({ force: true }) : setView("settings"));
+
+applyTheme();
+render();
+setSyncStatus(sync.url ? "ok" : "off");
+if (sync.url) pull({ force: true, first: !sync.base });
+</script>
+</body>
+</html>
