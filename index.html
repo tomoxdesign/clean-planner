@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#101317" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Úklid">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Plánovač úklidu</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -73,6 +78,7 @@
     position: sticky; top: 0; z-index: 20;
     background: color-mix(in srgb, var(--bg) 88%, transparent);
     backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
+    padding-top: env(safe-area-inset-top);
   }
   .topbar-inner { max-width: 1320px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; margin-right: auto; }
@@ -83,6 +89,8 @@
   .tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
   .tab.active .ms { color: var(--accent); font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24; }
   .bottomnav { display: none; }
+  #installBtn { color: var(--accent); }
+  #installBtn[hidden] { display: none; }
   #syncBtn.ok { color: var(--ok); }
   #syncBtn.error { color: var(--late); }
   #syncBtn.busy .ms { animation: spin 1s linear infinite; }
@@ -148,8 +156,12 @@
 
   /* ---------- calendar ---------- */
   .cal-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+  .cal-layout > * { min-width: 0; }
+  .cal-card { overflow: hidden; }
   .cal-head { display: flex; align-items: center; gap: 8px; padding: 14px 14px 8px; flex-wrap: wrap; }
-  .cal-head h2 { margin: 0 auto 0 4px; font-size: 20px; font-weight: 700; }
+  .cal-head h2 { margin: 0 auto 0 4px; font-size: 20px; font-weight: 700; min-width: 0; }
+  .cal-tools, .cal-arrows { display: flex; align-items: center; gap: 8px; }
+  .cal-arrows { gap: 0; }
   .cal-head h2::first-letter { text-transform: uppercase; }
   .cal-filter { padding: 0 14px 12px; }
   .weekdays, .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
@@ -218,7 +230,7 @@
   .hint i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
 
   /* ---------- rooms ---------- */
-  .rooms-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  .rooms-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); }
   .room-head { display: flex; align-items: center; gap: 12px; padding: 14px 14px 10px; }
   .room-head .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
   .room-head .ic .ms { font-size: 24px; }
@@ -248,7 +260,7 @@
   .list-card { padding: 4px 6px; }
 
   /* ---------- settings ---------- */
-  .settings { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
+  .settings { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); align-items: start; }
   .settings .card { padding: 16px; }
   .settings h3 { margin: 0 0 4px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
   .settings h3 .ms { color: var(--accent); }
@@ -266,6 +278,7 @@
   .dlg-body { display: grid; gap: 12px; padding: 12px 18px; }
   .dlg-foot { display: flex; gap: 8px; padding: 8px 18px 18px; }
   .dlg-foot .sp { flex: 1; }
+  #dlgNewWrap[hidden] { display: none; }
 
   /* ---------- toast ---------- */
   .toast {
@@ -282,7 +295,7 @@
 
   /* ---------- responsive ---------- */
   @media (max-width: 1080px) {
-    .cal-layout { grid-template-columns: 1fr; }
+    .cal-layout { grid-template-columns: minmax(0, 1fr); }
     .panel { position: static; }
     .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
@@ -301,12 +314,17 @@
     .rooms-grid { grid-template-columns: 1fr; }
     .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
 
-    .cal-head { padding: 12px 10px 8px; gap: 4px; }
-    .cal-head h2 { font-size: 18px; flex-basis: 100%; margin: 0 0 4px 4px; }
+    .cal-head { padding: 10px 8px 8px 14px; gap: 6px; }
+    .cal-head h2 { font-size: 18px; flex: 1 1 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cal-arrows { order: 1; }
+    .cal-tools { order: 2; flex-basis: 100%; gap: 6px; }
+    .cal-tools .seg { margin-right: auto; }
+    .cal-tools .btn { padding: 6px 10px; }
     .cal-head .lbl { display: none; }
-    .cal-head .seg { margin-right: auto; }
+    .cal-head .lbl.keep { display: inline; }
     .cal-filter { padding: 0 10px 10px; }
-    .days.month .day { min-height: 54px; padding: 4px 2px; align-items: center; gap: 4px; }
+    .days.month .day { min-height: 56px; padding: 4px 2px; align-items: center; gap: 4px; }
+    .num { width: 28px; height: 28px; }
     .days.month .ev, .days.month .more { display: none; }
     .days.month .dots { display: flex; }
     .weekdays div { text-align: center; padding: 6px 0; }
@@ -326,7 +344,12 @@
     dialog { margin: auto auto 0; width: 100vw; max-width: 100vw; border-radius: 22px 22px 0 0; padding-bottom: env(safe-area-inset-bottom); }
   }
   @media (max-width: 420px) {
-    .brand { font-size: 15px; }
+    .brand { font-size: 15px; gap: 8px; }
+    .brand .logo { width: 30px; height: 30px; }
+    .topbar-inner { gap: 4px; padding: 8px 8px 8px 12px; }
+    main { padding-left: 8px; padding-right: 8px; }
+    .dots { gap: 2px; }
+    .dot { width: 5px; height: 5px; }
   }
 </style>
 </head>
@@ -335,6 +358,7 @@
   <div class="topbar-inner">
     <div class="brand"><span class="logo"><span class="ms fill">cleaning_services</span></span>Plánovač úklidu</div>
     <nav class="tabs" id="tabs"></nav>
+    <button class="icon-btn" id="installBtn" aria-label="Nainstalovat aplikaci" title="Nainstalovat aplikaci" hidden><span class="ms">install_mobile</span></button>
     <button class="icon-btn" id="syncBtn" aria-label="Synchronizace"><span class="ms">cloud_off</span></button>
     <button class="icon-btn" id="themeBtn" aria-label="Přepnout motiv"><span class="ms"></span></button>
   </div>
@@ -353,6 +377,7 @@
     <div class="dlg-body">
       <label class="field">Místnost<select id="dlgRoom"></select></label>
       <label class="field">Úkol<select id="dlgTask"></select></label>
+      <label class="field" id="dlgNewWrap">Název nového úkolu<input id="dlgNewName" placeholder="Např. Vynést koše, Umýt okna…" autocomplete="off"></label>
       <div class="row" style="flex-wrap:nowrap">
         <label class="field" style="flex:1">Datum<input type="date" id="dlgDate" required></label>
         <label class="field" style="flex:1">Kdo<select id="dlgUser"></select></label>
@@ -402,9 +427,13 @@ const TASK_ICONS = [
   [/prach/i, "cleaning_services"], [/zamést/i, "mop"], [/vytřít/i, "water_drop"], [/nepatří|věci/i, "inventory_2"],
   [/trávu|sekat/i, "grass"], [/plevel/i, "potted_plant"], [/teras/i, "deck"], [/okn/i, "window"], [/prádl/i, "local_laundry_service"],
 ];
+const OWN_ID = "own";
+const isOwn = r => r.id === OWN_ID;
 const iconFor = (list, name, fallback) => (list.find(([re]) => re.test(name)) || [, fallback])[1];
 const roomIcon = name => iconFor(ROOM_ICONS, name, "home");
 const taskIcon = name => iconFor(TASK_ICONS, name, "task_alt");
+const itemIcon = (r, t) => isOwn(r) ? taskIcon(t.name) : roomIcon(r.name);
+const roomLabel = r => isOwn(r) ? "Vlastní úkol" : r.name;
 
 const VIEWS = [["calendar", "Kalendář", "calendar_month"], ["rooms", "Místnosti", "home"], ["list", "Přehled", "insights"], ["settings", "Nastavení", "settings"]];
 const THEMES = { system: ["brightness_auto", "Podle systému"], light: ["light_mode", "Světlý"], dark: ["dark_mode", "Tmavý"] };
@@ -437,7 +466,7 @@ const repeatShort = r => r % 30 === 0 ? `${r / 30} měs.` : r % 7 === 0 ? `${r /
 /* ---------- state ---------- */
 
 function defaultState() {
-  return { users: ["Já"], rooms: DEFAULT_ROOMS.map(([name, tasks]) => ({ id: uid(), name, tasks: tasks.map(([t, r]) => newTask(t, r)) })) };
+  return normalize({ users: ["Já"], rooms: DEFAULT_ROOMS.map(([name, tasks]) => ({ id: uid(), name, tasks: tasks.map(([t, r]) => newTask(t, r)) })) });
 }
 
 // převede starší data (s příznakem done) na nový formát s historií
@@ -455,6 +484,9 @@ function normalize(s) {
     }
     delete t.done;
   }));
+  // úkoly bez místnosti mají vlastní skupinu, vždy na začátku
+  const own = s.rooms.find(isOwn) || { id: OWN_ID, name: "Vlastní úkoly", tasks: [] };
+  s.rooms = [own, ...s.rooms.filter(r => r !== own)];
   return s;
 }
 
@@ -782,7 +814,7 @@ function itemRow(x, opts = {}) {
       ? `<button class="check on" data-act="uncomplete" data-hid="${h.id}" aria-label="Zrušit hotovo"><span class="ms">check</span></button>`
       : `<span class="check ghostc" title="Budoucí opakování"></span>`;
   const sub = [
-    esc(r.name),
+    esc(roomLabel(r)),
     opts.date && kind === "planned" && t.date ? shortDate(t.date) : "",
     opts.date && kind === "history" ? shortDate(h.date) : "",
   ].filter(Boolean).join(" · ");
@@ -791,7 +823,7 @@ function itemRow(x, opts = {}) {
     : `<span class="badge rep"><span class="ms">repeat</span>opakování</span>`;
   return `<div class="item ${kind}" data-room="${r.id}" data-task="${t.id}">
     ${check}
-    <div class="room-ic"><span class="ms">${roomIcon(r.name)}</span></div>
+    <div class="room-ic"><span class="ms">${itemIcon(r, t)}</span></div>
     <div class="meta">
       <div class="title">${esc(t.name)}</div>
       <div class="sub">${sub} ${person(kind === "history" ? h.user : t.user)} ${extra}</div>
@@ -842,9 +874,10 @@ function renderCalendar() {
     const evs = list.slice(0, max).map(x => {
       const lateCls = x.kind === "planned" && daysDiff(key) < 0 ? "late" : "";
       const drag = x.kind === "planned" ? `draggable="true" data-drag="${x.r.id}:${x.t.id}"` : "";
-      const label = week ? `<b>${esc(x.t.name)}</b><small>${esc(x.r.name)}${x.user ? " · " + esc(x.user) : ""}</small>` : `${esc(x.r.name)} · ${esc(x.t.name)}`;
-      return `<div class="ev ${x.kind} ${lateCls}" ${drag} style="--c:${userColor(x.user)}" title="${esc(x.r.name)} – ${esc(x.t.name)}${x.user ? " (" + esc(x.user) + ")" : ""}">
-        <span class="ms">${x.kind === "history" ? "check_circle" : roomIcon(x.r.name)}</span><span class="t">${label}</span></div>`;
+      const own = isOwn(x.r);
+      const label = week ? `<b>${esc(x.t.name)}</b><small>${esc(roomLabel(x.r))}${x.user ? " · " + esc(x.user) : ""}</small>` : own ? esc(x.t.name) : `${esc(x.r.name)} · ${esc(x.t.name)}`;
+      return `<div class="ev ${x.kind} ${lateCls}" ${drag} style="--c:${userColor(x.user)}" title="${own ? "" : esc(x.r.name) + " – "}${esc(x.t.name)}${x.user ? " (" + esc(x.user) + ")" : ""}">
+        <span class="ms">${x.kind === "history" ? "check_circle" : itemIcon(x.r, x.t)}</span><span class="t">${label}</span></div>`;
     }).join("");
     const more = list.length > max ? `<div class="more">+${list.length - max} další</div>` : "";
     const dots = list.length ? `<div class="dots">${list.slice(0, 6).map(x => `<i class="dot ${x.kind} ${x.kind === "planned" && daysDiff(key) < 0 ? "late" : ""}" style="--c:${userColor(x.user)}"></i>`).join("")}</div>` : "";
@@ -857,17 +890,21 @@ function renderCalendar() {
   const real = selItems.filter(x => x.kind !== "ghost").length;
 
   return `<div class="cal-layout">
-    <section class="card">
+    <section class="card cal-card">
       <div class="cal-head">
         <h2>${title}</h2>
+        <div class="cal-tools">
         <div class="seg">
           <button class="${!week ? "on" : ""}" data-mode="month"><span class="ms">calendar_view_month</span><span class="lbl">Měsíc</span></button>
           <button class="${week ? "on" : ""}" data-mode="week"><span class="ms">view_week</span><span class="lbl">Týden</span></button>
         </div>
         ${late ? `<button class="btn danger" data-goto="list" title="Úkoly po termínu"><span class="ms">error</span><span class="lbl">Po termínu:</span> ${late}</button>` : ""}
-        <button class="btn" data-cal="today"><span class="ms">today</span><span class="lbl">Dnes</span></button>
-        <button class="icon-btn" data-cal="prev" aria-label="Předchozí"><span class="ms">chevron_left</span></button>
-        <button class="icon-btn" data-cal="next" aria-label="Další"><span class="ms">chevron_right</span></button>
+        <button class="btn" data-cal="today"><span class="ms">today</span><span class="lbl keep">Dnes</span></button>
+        </div>
+        <div class="cal-arrows">
+          <button class="icon-btn" data-cal="prev" aria-label="Předchozí"><span class="ms">chevron_left</span></button>
+          <button class="icon-btn" data-cal="next" aria-label="Další"><span class="ms">chevron_right</span></button>
+        </div>
       </div>
       <div class="cal-filter">${filterChips()}</div>
       <div class="weekdays ${week ? "week" : ""}">${["Po", "Út", "St", "Čt", "Pá", "So", "Ne"].map((n, i) => `<div>${n}${week ? " " + parse(addDays(start, i)).getDate() + "." : ""}</div>`).join("")}</div>
@@ -901,10 +938,10 @@ function renderRooms() {
     const last = room.tasks.map(lastDone).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date))[0];
     return `<section class="card">
       <div class="room-head">
-        <div class="ic"><span class="ms">${roomIcon(room.name)}</span></div>
+        <div class="ic"><span class="ms">${isOwn(room) ? "task_alt" : roomIcon(room.name)}</span></div>
         <div style="flex:1;min-width:0">
           <h3>${esc(room.name)}</h3>
-          <div class="muted small">${planned} naplánováno${late ? ` · <span style="color:var(--late)">${late} po termínu</span>` : ""}${last ? ` · naposledy ${shortDate(last.date)}` : ""}</div>
+          <div class="muted small">${isOwn(room) && !room.tasks.length ? "Úkoly, které nepatří k žádné místnosti" : `${planned} naplánováno`}${late ? ` · <span style="color:var(--late)">${late} po termínu</span>` : ""}${last ? ` · naposledy ${shortDate(last.date)}` : ""}</div>
         </div>
       </div>
       ${room.tasks.map(t => {
@@ -924,7 +961,7 @@ function renderRooms() {
         </div>`;
       }).join("")}
       <form class="add-row" data-room="${room.id}">
-        <input name="t" placeholder="Přidat úkol…">
+        <input name="t" placeholder="${isOwn(room) ? "Přidat vlastní úkol…" : "Přidat úkol…"}">
         <button class="icon-btn" aria-label="Přidat"><span class="ms">add</span></button>
       </form>
     </section>`;
@@ -990,6 +1027,17 @@ function renderSettings() {
       <div class="seg">${Object.entries(THEMES).map(([k, [ic, l]]) => `<button class="${theme === k ? "on" : ""}" data-theme-set="${k}"><span class="ms">${ic}</span>${l}</button>`).join("")}</div>
     </section>
     <section class="card">
+      <h3><span class="ms">install_mobile</span>Aplikace v telefonu</h3>
+      ${isStandalone() ? `<div class="sync-state ok"><span class="ms">check_circle</span><span>Běží jako nainstalovaná aplikace.</span></div>`
+        : installEvt ? `<div class="muted small" style="margin-bottom:12px">Nainstaluj si plánovač na plochu. Otevře se jako samostatná aplikace a funguje i bez internetu.</div>
+        <button class="btn primary" id="installApp"><span class="ms">download</span>Nainstalovat aplikaci</button>`
+        : `<div class="muted small">Plánovač jde přidat na plochu jako aplikace. Funguje jen z adresy https (GitHub Pages), ne z lokálního souboru.</div>
+        <ol class="steps">
+          <li><b>Android (Chrome):</b> menu <code>⋮</code> → <b>Přidat na plochu</b> → <b>Instalovat</b>.</li>
+          <li><b>iPhone (Safari):</b> tlačítko <b>Sdílet</b> → <b>Přidat na plochu</b>.</li>
+        </ol>`}
+    </section>
+    <section class="card">
       <h3><span class="ms">cloud_sync</span>Sdílení dat</h3>
       ${sync.url ? `
         <div class="muted small">Data se ukládají do Google Tabulky, takže všichni vidí to samé. Změny ostatních se načítají každých 20 s.</div>
@@ -1022,7 +1070,7 @@ function renderSettings() {
     <section class="card">
       <h3><span class="ms">home</span>Místnosti</h3>
       <div class="muted small">Nová místnost dostane základní úkoly (prach, zamést, vytřít, věci).</div>
-      <div class="tags">${state.rooms.map(r => `<span class="tag"><span class="ms" style="font-size:16px;color:var(--muted)">${roomIcon(r.name)}</span>${esc(r.name)}<button class="icon-btn sm" data-delroom="${r.id}" aria-label="Smazat"><span class="ms">close</span></button></span>`).join("")}</div>
+      <div class="tags">${state.rooms.filter(r => !isOwn(r)).map(r => `<span class="tag"><span class="ms" style="font-size:16px;color:var(--muted)">${roomIcon(r.name)}</span>${esc(r.name)}<button class="icon-btn sm" data-delroom="${r.id}" aria-label="Smazat"><span class="ms">close</span></button></span>`).join("")}</div>
       <form id="addRoom" class="row"><input name="r" placeholder="Název místnosti"><button class="btn primary"><span class="ms">add</span>Přidat</button></form>
     </section>
     <section class="card">
@@ -1075,25 +1123,33 @@ const $ = id => document.getElementById(id);
 const dlg = $("planDlg");
 $("dlgRepeat").innerHTML = REPEATS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
 
+const NEW_TASK = "__new";
 function fillTasks(roomId, taskId) {
   const room = state.rooms.find(r => r.id === roomId);
+  // ve vlastních úkolech se při plánování rovnou nabídne nový úkol
+  if (!taskId && (isOwn(room) || !room.tasks.length)) taskId = NEW_TASK;
   $("dlgTask").innerHTML = room.tasks.map(t =>
-    `<option value="${t.id}" ${t.id === taskId ? "selected" : ""}>${esc(t.name)}${t.date ? " (" + shortDate(t.date) + ")" : ""}</option>`).join("");
+    `<option value="${t.id}" ${t.id === taskId ? "selected" : ""}>${esc(t.name)}${t.date ? " (" + shortDate(t.date) + ")" : ""}</option>`).join("")
+    + `<option value="${NEW_TASK}" ${taskId === NEW_TASK ? "selected" : ""}>+ Nový úkol…</option>`;
   syncTaskFields();
 }
 function syncTaskFields(keepDate) {
+  const isNew = $("dlgTask").value === NEW_TASK;
+  $("dlgNewWrap").hidden = !isNew;
+  $("dlgNewName").required = isNew;
   const { task } = findTask($("dlgRoom").value, $("dlgTask").value);
-  if (!task) return;
-  $("dlgUser").innerHTML = userOptions(task.user || (prefs.user !== "__none" ? prefs.user : ""));
-  $("dlgRepeat").value = String(task.repeat || 0);
-  if (!keepDate) $("dlgDate").value = task.date || selected;
-  $("dlgClear").style.visibility = task.date ? "visible" : "hidden";
+  const t = task || { user: "", repeat: 0, date: "" };
+  $("dlgUser").innerHTML = userOptions(t.user || (prefs.user !== "__none" ? prefs.user : ""));
+  $("dlgRepeat").value = String(t.repeat || 0);
+  if (!keepDate) $("dlgDate").value = t.date || selected;
+  $("dlgClear").style.visibility = t.date ? "visible" : "hidden";
 }
 function openPlan({ roomId, taskId, date } = {}) {
   roomId ||= state.rooms[0]?.id;
   if (!roomId) return;
   $("dlgTitle").textContent = taskId ? "Upravit úkol" : "Naplánovat úkol";
-  $("dlgRoom").innerHTML = state.rooms.map(r => `<option value="${r.id}" ${r.id === roomId ? "selected" : ""}>${esc(r.name)}</option>`).join("");
+  $("dlgRoom").innerHTML = state.rooms.map(r => `<option value="${r.id}" ${r.id === roomId ? "selected" : ""}>${isOwn(r) ? "Bez místnosti (vlastní úkol)" : esc(r.name)}</option>`).join("");
+  $("dlgNewName").value = "";
   fillTasks(roomId, taskId);
   if (date) $("dlgDate").value = date;
   dlg.showModal();
@@ -1101,9 +1157,16 @@ function openPlan({ roomId, taskId, date } = {}) {
 $("dlgRoom").addEventListener("change", () => { const d = $("dlgDate").value; fillTasks($("dlgRoom").value); $("dlgDate").value = d; });
 $("dlgTask").addEventListener("change", () => syncTaskFields(true));
 dlg.addEventListener("close", () => {
-  const { task } = findTask($("dlgRoom").value, $("dlgTask").value);
-  if (!task || !["ok", "clear"].includes(dlg.returnValue)) return;
+  if (!["ok", "clear"].includes(dlg.returnValue)) return;
   const snap = snapshot();
+  let { room, task } = findTask($("dlgRoom").value, $("dlgTask").value);
+  if ($("dlgTask").value === NEW_TASK && dlg.returnValue === "ok") {
+    const name = $("dlgNewName").value.trim();
+    if (!room || !name) return;
+    task = newTask(name);
+    room.tasks.push(task);
+  }
+  if (!task) return;
   if (dlg.returnValue === "clear") {
     task.date = "";
     save(); render(); toast("Termín zrušen", snap);
@@ -1162,6 +1225,7 @@ app.addEventListener("click", e => {
     return toast(`Místnost „${room.name}“ smazána`, snap);
   }
   if (el.id === "export") return exportFile();
+  if (el.id === "installApp") return promptInstall();
   if (el.id === "syncNow") return pull({ force: true });
   if (el.id === "syncOff" && confirm("Odpojit sdílení? Data zůstanou v tabulce i v tomto prohlížeči.")) return disconnectSync();
   if (el.id === "copyLink") {
@@ -1293,6 +1357,30 @@ function importFile(file) {
 }
 
 document.getElementById("syncBtn").addEventListener("click", () => sync.url ? pull({ force: true }) : setView("settings"));
+
+/* ---------- instalace jako aplikace (PWA) ---------- */
+
+let installEvt = null;
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function updateInstallBtn() { $("installBtn").hidden = !installEvt || isStandalone(); }
+async function promptInstall() {
+  if (!installEvt) return;
+  installEvt.prompt();
+  await installEvt.userChoice.catch(() => {});
+  installEvt = null; updateInstallBtn();
+  if (prefs.view === "settings") render();
+}
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  installEvt = e; updateInstallBtn();
+  if (prefs.view === "settings") render();
+});
+window.addEventListener("appinstalled", () => {
+  installEvt = null; updateInstallBtn(); toast("Aplikace nainstalována");
+  if (prefs.view === "settings") render();
+});
+$("installBtn").addEventListener("click", promptInstall);
+if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(() => {});
 
 applyTheme();
 render();

@@ -17,13 +17,21 @@ Data se sdílejí přes Google Tabulku a Apps Script.
 
 ## 2. GitHub Pages
 
-1. Nahraj `index.html` do repozitáře na GitHubu. Složka `apps-script` tam být nemusí.
+1. Nahraj do repozitáře na GitHubu `index.html`, `manifest.webmanifest`, `sw.js` a složku `icons`. Složka `apps-script` tam být nemusí.
 2. V **Settings → Pages** nastav Source na *Deploy from a branch*, branch `main` a složku `/ (root)`.
 3. Otevři stránku, v **Nastavení → Sdílení dat** vlož adresu `/exec` a klikni na **Připojit**.
 4. Klikni na **Zkopírovat odkaz pro ostatní** a pošli ho rodině. Kdo ho otevře, připojí se automaticky.
 
-
 Adresu můžeš také rovnou vepsat do `index.html` do konstanty `DEFAULT_SYNC_URL`. Pak se připojí každý, kdo stránku otevře.
+
+## Instalace do telefonu
+
+Stránka je PWA, takže jde nainstalovat jako aplikace (funguje jen přes https, tedy z GitHub Pages):
+
+- **Android (Chrome):** v aplikaci se nahoře objeví ikona instalace, případně *Nastavení → Aplikace v telefonu → Nainstalovat aplikaci*. Jinak menu ⋮ → *Přidat na plochu*.
+- **iPhone (Safari):** *Sdílet → Přidat na plochu*.
+
+Po úpravě `index.html` zvyš v `sw.js` hodnotu `CACHE` (např. `uklid-v2`), aby si nainstalované aplikace stáhly novou verzi spolehlivě.
 
 ## Jak to funguje
 
